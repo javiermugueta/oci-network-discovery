@@ -513,6 +513,7 @@ class AdvancedDrawIODiagramGenerator:
             fc_cell = ET.SubElement(graph_root, 'mxCell')
             fc_cell.set('id', f'fc-{self.cell_id_counter}')
             fc_cell.set('value', f'<div style="text-align: center;"><b>FastConnect: {fc.display_name}</b><br/>BW: {fc.bandwidth_shape_name}<br/>Type: {fc.type}</div>')
+            fc_cell.set('upstream', '1')
             fc_cell.set('style', 'rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;strokeWidth=3')
             fc_cell.set('vertex', '1')
             fc_cell.set('parent', '1')
@@ -555,6 +556,219 @@ class AdvancedDrawIODiagramGenerator:
         self.edge_id_counter += 1
 
 
+class CompatibleDrawIODiagramGenerator:
+    """Generador compatible de diagramas Draw.io que evita problemas de mxCell"""
+    
+    def __init__(self):
+        self.cell_id_counter = 2  # Empezar después de las celdas del sistema (0, 1)
+        self.edge_id_counter = 1000  # Empezar en 1000 para evitar conflictos
+        
+    def generate_compatible_diagram(self, all_resources, output_file):
+        """Genera un diagrama compatible con todas las versiones de draw.io"""
+        root = self._create_compatible_diagram_root()
+        
+        # Generar diagrama por región
+        for region, region_resources in all_resources.items():
+            self._add_compatible_region_section(root, region, region_resources)
+        
+        # Escribir archivo
+        tree = ET.ElementTree(root)
+        tree.write(output_file, encoding='utf-8', xml_declaration=True)
+        
+    def _create_compatible_diagram_root(self):
+        """Crea estructura compatible del diagrama"""
+        root = ET.Element('mxfile')
+        root.set('host', 'Electron')
+        root.set('modified', datetime.now().isoformat())
+        root.set('agent', 'OCI Network Discovery Tool - Compatible')
+        root.set('etag', 'compatible-generated')
+        root.set('version', '24.6.4')
+        root.set('type', 'device')
+        
+        diagram = ET.SubElement(root, 'diagram')
+        diagram.set('name', 'OCI Network Infrastructure - Compatible')
+        diagram.set('id', 'oci-network-compatible')
+        
+        mx_graph_model = ET.SubElement(diagram, 'mxGraphModel')
+        mx_graph_model.set('dx', '4326')
+        mx_graph_model.set('dy', '21794')
+        mx_graph_model.set('grid', '1')
+        mx_graph_model.set('gridSize', '10')
+        mx_graph_model.set('guides', '1')
+        mx_graph_model.set('tooltips', '1')
+        mx_graph_model.set('connect', '1')
+        mx_graph_model.set('arrows', '1')
+        mx_graph_model.set('fold', '1')
+        mx_graph_model.set('page', '1')
+        mx_graph_model.set('pageScale', '1')
+        mx_graph_model.set('pageWidth', '3300')
+        mx_graph_model.set('pageHeight', '2339')
+        mx_graph_model.set('math', '0')
+        mx_graph_model.set('shadow', '0')
+        
+        graph_root = ET.SubElement(mx_graph_model, 'root')
+        
+        # Celdas del sistema con IDs numéricos simples
+        ET.SubElement(graph_root, 'mxCell', id='0')
+        ET.SubElement(graph_root, 'mxCell', id='1', parent='0')
+        
+        return root
+        
+    def _add_compatible_region_section(self, root, region, region_resources):
+        """Añade sección compatible de región"""
+        diagram = root.find('diagram')
+        mx_graph_model = diagram.find('mxGraphModel')
+        graph_root = mx_graph_model.find('root')
+        
+        # Crear DRG central
+        if region_resources.get('drgs'):
+            self._add_compatible_drg(graph_root, region_resources, region)
+            
+        # Crear VCNs alrededor del DRG
+        if region_resources.get('drg_attachments'):
+            self._add_compatible_vcns(graph_root, region_resources, region)
+            
+        # Crear conexiones VPN y FastConnect
+        self._add_compatible_connections(graph_root, region_resources, region)
+        
+    def _add_compatible_drg(self, graph_root, region_resources, region):
+        """Añade DRG central compatible"""
+        drg = region_resources['drgs'][0]
+        
+        # DRG principal con ID numérico
+        drg_cell = ET.SubElement(graph_root, 'mxCell')
+        drg_cell.set('id', str(self.cell_id_counter))
+        drg_cell.set('value', f'<div style="font-size: 16px; text-align: center;"><b>{drg.display_name}</b><br/>DRG Central<br/>ID: {drg.id[:20]}...</div>')
+        drg_cell.set('style', 'rounded=0;whiteSpace=wrap;html=1;strokeWidth=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=14')
+        drg_cell.set('vertex', '1')
+        drg_cell.set('parent', '1')
+        
+        geometry = ET.SubElement(drg_cell, 'mxGeometry')
+        geometry.set('x', '1200')
+        geometry.set('y', '1000')
+        geometry.set('width', '300')
+        geometry.set('height', '200')
+        geometry.set('as', 'geometry')
+        
+        self.cell_id_counter += 1
+        
+    def _add_compatible_vcns(self, graph_root, region_resources, region):
+        """Añade VCNs compatibles alrededor del DRG"""
+        vcn_positions = [
+            (800, 800),   # Izquierda arriba
+            (1600, 800),  # Derecha arriba
+            (800, 1200),  # Izquierda abajo
+            (1600, 1200), # Derecha abajo
+        ]
+        
+        # Buscar el DRG central (debe ser el primer elemento creado)
+        drg_id = None
+        for cell in graph_root.findall('mxCell'):
+            if cell.get('vertex') == '1' and cell.get('parent') == '1':
+                # El primer elemento vertex es el DRG
+                drg_id = cell.get('id')
+                break
+        
+        if not drg_id:
+            return
+        
+        for i, attachment in enumerate(region_resources.get('drg_attachments', [])[:4]):
+            if attachment.vcn_id:
+                vcn = next((v for v in region_resources['vcns'] if v.id == attachment.vcn_id), None)
+                if vcn and i < len(vcn_positions):
+                    x, y = vcn_positions[i]
+                    
+                    # Crear VCN con ID numérico
+                    vcn_cell = ET.SubElement(graph_root, 'mxCell')
+                    vcn_cell.set('id', str(self.cell_id_counter))
+                    vcn_cell.set('value', f'<div style="text-align: center;"><b>{vcn.display_name}</b><br/>CIDR: {vcn.cidr_block}<br/>Compartment: {vcn.compartment_id[:20]}...</div>')
+                    vcn_cell.set('style', 'rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;strokeWidth=2')
+                    vcn_cell.set('vertex', '1')
+                    vcn_cell.set('parent', '1')
+                    
+                    geometry = ET.SubElement(vcn_cell, 'mxGeometry')
+                    geometry.set('x', str(x))
+                    geometry.set('y', str(y))
+                    geometry.set('width', '200')
+                    geometry.set('height', '80')
+                    geometry.set('as', 'geometry')
+                    
+                    vcn_id = self.cell_id_counter
+                    self.cell_id_counter += 1
+                    
+                    # Conectar al DRG central
+                    self._add_compatible_connection(graph_root, str(vcn_id), drg_id, 
+                                                 f'{attachment.display_name}')
+                    
+    def _add_compatible_connections(self, graph_root, region_resources, region):
+        """Añade conexiones compatibles"""
+        # VPN Connections
+        vpn_y_offset = 2200
+        for i, vpn in enumerate(region_resources.get('vpn_connections', [])[:2]):
+            vpn_cell = ET.SubElement(graph_root, 'mxCell')
+            vpn_cell.set('id', str(self.cell_id_counter))
+            vpn_cell.set('value', f'<div style="text-align: center;"><b>VPN: {vpn.display_name}</b><br/>DRG: {vpn.drg_id[:20]}...</div>')
+            vpn_cell.set('style', 'rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;strokeWidth=3')
+            vpn_cell.set('vertex', '1')
+            vpn_cell.set('parent', '1')
+            
+            geometry = ET.SubElement(vpn_cell, 'mxGeometry')
+            geometry.set('x', '50')
+            geometry.set('y', f'{vpn_y_offset + (i * 100)}')
+            geometry.set('width', '250')
+            geometry.set('height', '80')
+            geometry.set('as', 'geometry')
+            
+            self.cell_id_counter += 1
+            
+        # FastConnect Connections
+        fc_y_offset = 2400
+        for i, fc in enumerate(region_resources.get('fastconnect_connections', [])[:2]):
+            fc_cell = ET.SubElement(graph_root, 'mxCell')
+            fc_cell.set('id', str(self.cell_id_counter))
+            fc_cell.set('value', f'<div style="text-align: center;"><b>FastConnect: {fc.display_name}</b><br/>BW: {fc.bandwidth_shape_name}</div>')
+            fc_cell.set('style', 'rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;strokeWidth=3')
+            fc_cell.set('vertex', '1')
+            fc_cell.set('parent', '1')
+            
+            geometry = ET.SubElement(fc_cell, 'mxGeometry')
+            geometry.set('x', '350')
+            geometry.set('y', f'{fc_y_offset + (i * 100)}')
+            geometry.set('width', '250')
+            geometry.set('height', '80')
+            geometry.set('as', 'geometry')
+            
+            self.cell_id_counter += 1
+            
+    def _add_compatible_connection(self, graph_root, source_id, target_id, label):
+        """Añade conexión compatible entre elementos"""
+        connection = ET.SubElement(graph_root, 'mxCell')
+        connection.set('id', str(self.edge_id_counter))
+        connection.set('style', 'rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;strokeWidth=3;strokeColor=#666666')
+        connection.set('edge', '1')
+        connection.set('parent', '1')
+        connection.set('source', source_id)
+        connection.set('target', target_id)
+        
+        # Añadir etiqueta
+        if label:
+            edge_label = ET.SubElement(connection, 'mxCell')
+            edge_label.set('id', str(self.edge_id_counter + 1000))  # ID único para etiquetas
+            edge_label.set('value', label)
+            edge_label.set('style', 'edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#666666')
+            edge_label.set('vertex', '1')
+            edge_label.set('connectable', '0')
+            edge_label.set('parent', str(self.edge_id_counter))
+            
+            label_geometry = ET.SubElement(edge_label, 'mxGeometry')
+            label_geometry.set('x', '0.5')
+            label_geometry.set('y', '-0.5')
+            label_geometry.set('relative', '1')
+            label_geometry.set('as', 'geometry')
+        
+        self.edge_id_counter += 1
+
+
 def generate_oci_network_diagram(all_resources, output_file):
     """
     Función principal para generar diagrama de red OCI básico
@@ -579,3 +793,16 @@ def generate_advanced_oci_network_diagram(all_resources, output_file):
     generator = AdvancedDrawIODiagramGenerator()
     generator.generate_advanced_diagram(all_resources, output_file)
     print(f"Diagrama Draw.io avanzado generado en: {output_file}")
+
+
+def generate_compatible_oci_network_diagram(all_resources, output_file):
+    """
+    Función para generar diagrama compatible con todas las versiones de draw.io
+    
+    Args:
+        all_resources (dict): Recursos descubiertos por región
+        output_file (Path): Archivo de salida
+    """
+    generator = CompatibleDrawIODiagramGenerator()
+    generator.generate_compatible_diagram(all_resources, output_file)
+    print(f"Diagrama Draw.io compatible generado en: {output_file}")

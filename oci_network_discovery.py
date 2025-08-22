@@ -295,12 +295,12 @@ def discover_network_resources(config, profile, regions, output_dir):
     markdown_file = output_path / f"oci_network_report_{timestamp}.md"
     generate_markdown_report(all_resources, markdown_file, config_dict)
     
-    # Generar diagrama Draw.io avanzado
+    # Generar diagrama Draw.io compatible
     try:
-        from modules.diagram_generator import generate_advanced_oci_network_diagram
+        from modules.diagram_generator import generate_compatible_oci_network_diagram
         diagram_file = output_path / f"oci_network_diagram_{timestamp}.drawio"
-        generate_advanced_oci_network_diagram(all_resources, diagram_file)
-        print(f"Diagrama Draw.io avanzado generado en: {diagram_file}")
+        generate_compatible_oci_network_diagram(all_resources, diagram_file)
+        print(f"Diagrama Draw.io compatible generado en: {diagram_file}")
     except ImportError as e:
         print(f"No se pudo generar el diagrama: {e}")
     
