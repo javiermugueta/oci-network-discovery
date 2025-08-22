@@ -17,8 +17,6 @@ class DrawIODiagramGenerator:
     def __init__(self):
         self.cell_id_counter = 1
         self.edge_id_counter = 1
-        self.x_offset = 0
-        self.y_offset = 0
         
     def generate_network_diagram(self, all_resources, output_file):
         """
@@ -296,27 +294,12 @@ class DrawIODiagramGenerator:
         self.edge_id_counter += 1
 
 
-def generate_oci_network_diagram(all_resources, output_file):
-    """
-    Función principal para generar diagrama de red OCI
-    
-    Args:
-        all_resources (dict): Recursos descubiertos por región
-        output_file (Path): Archivo de salida
-    """
-    generator = DrawIODiagramGenerator()
-    generator.generate_network_diagram(all_resources, output_file)
-    print(f"Diagrama Draw.io generado en: {output_file}")
-
-
 class AdvancedDrawIODiagramGenerator:
     """Generador avanzado de diagramas Draw.io similar a ejemplo.drawio"""
     
     def __init__(self):
         self.cell_id_counter = 1
         self.edge_id_counter = 1
-        self.x_offset = 0
-        self.y_offset = 0
         
     def generate_advanced_diagram(self, all_resources, output_file):
         """Genera un diagrama avanzado similar a ejemplo.drawio"""
@@ -420,6 +403,16 @@ class AdvancedDrawIODiagramGenerator:
             (1200, 1400)  # Abajo
         ]
         
+        # Obtener el ID del DRG central que se creó primero
+        drg_id = None
+        for cell in graph_root.findall('mxCell'):
+            if cell.get('id', '').startswith('central-drg-'):
+                drg_id = cell.get('id')
+                break
+        
+        if not drg_id:
+            return
+        
         for i, attachment in enumerate(region_resources.get('drg_attachments', [])[:6]):
             if attachment.vcn_id:
                 vcn = next((v for v in region_resources['vcns'] if v.id == attachment.vcn_id), None)
@@ -444,8 +437,8 @@ class AdvancedDrawIODiagramGenerator:
                     vcn_id = self.cell_id_counter
                     self.cell_id_counter += 1
                     
-                    # Conectar al DRG central
-                    self._add_advanced_connection(graph_root, f'vcn-{vcn_id}', 'central-drg-1', 
+                    # Conectar al DRG central usando el ID correcto
+                    self._add_advanced_connection(graph_root, f'vcn-{vcn_id}', drg_id, 
                                                f'{attachment.display_name}')
                     
     def _add_detailed_route_tables(self, graph_root, region_resources, region):
