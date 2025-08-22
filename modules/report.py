@@ -641,7 +641,7 @@ def generate_markdown_report(resources, output_file, config_dict=None):
                     f.write(f"##### Túneles de {vpn.display_name}\n\n")
                     
                     # Buscar túneles para esta conexión VPN
-                    vpn_tunnels = [t for t in region_resources.get('vpn_tunnels', []) if t.ipsec_id == vpn.id]
+                    vpn_tunnels = [t for t in region_resources.get('vpn_tunnels', []) if getattr(t, 'ipsec_connection_id', None) == vpn.id]
                     
                     if vpn_tunnels:
                         tunnels_data = []

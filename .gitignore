@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# Output artifacts
+output/*.md
+output/*.dot
+output/*.drawio
+output/*.png
+output/*.pkl
+
+# Virtual envs
+.venv/
+venv/

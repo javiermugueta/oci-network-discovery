@@ -80,7 +80,14 @@ def discover_network_resources(config, profile, regions, output_dir):
                 print("Selección inválida. Utilizando la región home.")
                 selected_regions = [config_dict['region']]
     else:
-        selected_regions = regions
+        # Parse regions - handle both comma-separated strings and lists
+        if isinstance(regions, list) and len(regions) == 1 and ',' in regions[0]:
+            # Handle case where --regions "20,1" becomes ['20,1']
+            selected_regions = [r.strip() for r in regions[0].split(',')]
+        elif isinstance(regions, str):
+            selected_regions = [r.strip() for r in regions.split(',')]
+        else:
+            selected_regions = regions
     
     # Crear directorio de salida
     output_path = create_output_directory(output_dir)
@@ -106,6 +113,12 @@ def discover_network_resources(config, profile, regions, output_dir):
             with open(cache_file, 'rb') as cf:
                 all_resources = pickle.load(cf)
             print(f"Cargado desde caché: {cache_file}")
+            # Validar que las regiones en caché coinciden con las solicitadas
+            cached_regions = set(all_resources.keys()) if isinstance(all_resources, dict) else set()
+            requested_regions = set(selected_regions)
+            if cached_regions and cached_regions != requested_regions:
+                print("Las regiones de la caché no coinciden con las solicitadas. Ignorando caché.")
+                all_resources = {}
         except Exception as e:
             print(f"No se pudo cargar la caché ({e}). Se realizará el descubrimiento completo.")
             all_resources = {}
