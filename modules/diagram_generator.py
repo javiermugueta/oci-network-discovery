@@ -571,14 +571,29 @@ class CompatibleDrawIODiagramGenerator:
         for region, region_resources in all_resources.items():
             self._add_compatible_region_section(root, region, region_resources)
         
-        # Escribir archivo
-        tree = ET.ElementTree(root)
-        tree.write(output_file, encoding='utf-8', xml_declaration=True)
+        # Escribir archivo con formato correcto
+        self._write_formatted_xml(root, output_file)
+        
+    def _write_formatted_xml(self, root, output_file):
+        """Escribe XML con formato correcto para draw.io"""
+        # Crear string XML con formato
+        xml_str = ET.tostring(root, encoding='UTF-8', xml_declaration=True)
+        
+        # Decodificar para formatear
+        xml_content = xml_str.decode('UTF-8')
+        
+        # Reemplazar host para compatibilidad
+        xml_content = xml_content.replace('host="Electron"', 'host="app.diagrams.net"')
+        
+        # Escribir archivo con formato
+        with open(output_file, 'w', encoding='UTF-8') as f:
+            f.write(xml_content)
+            f.write('\n')  # Añadir newline al final
         
     def _create_compatible_diagram_root(self):
         """Crea estructura compatible del diagrama"""
         root = ET.Element('mxfile')
-        root.set('host', 'Electron')
+        root.set('host', 'app.diagrams.net')  # Usar host compatible
         root.set('modified', datetime.now().isoformat())
         root.set('agent', 'OCI Network Discovery Tool - Compatible')
         root.set('etag', 'compatible-generated')
@@ -590,8 +605,8 @@ class CompatibleDrawIODiagramGenerator:
         diagram.set('id', 'oci-network-compatible')
         
         mx_graph_model = ET.SubElement(diagram, 'mxGraphModel')
-        mx_graph_model.set('dx', '4326')
-        mx_graph_model.set('dy', '21794')
+        mx_graph_model.set('dx', '1422')  # Valores más estándar
+        mx_graph_model.set('dy', '794')
         mx_graph_model.set('grid', '1')
         mx_graph_model.set('gridSize', '10')
         mx_graph_model.set('guides', '1')
@@ -601,8 +616,8 @@ class CompatibleDrawIODiagramGenerator:
         mx_graph_model.set('fold', '1')
         mx_graph_model.set('page', '1')
         mx_graph_model.set('pageScale', '1')
-        mx_graph_model.set('pageWidth', '3300')
-        mx_graph_model.set('pageHeight', '2339')
+        mx_graph_model.set('pageWidth', '827')  # Tamaños estándar
+        mx_graph_model.set('pageHeight', '1169')
         mx_graph_model.set('math', '0')
         mx_graph_model.set('shadow', '0')
         
